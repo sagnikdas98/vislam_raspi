@@ -1,0 +1,13 @@
+pin:
+  GPIO_MODE: "BOARD"
+  SDA: 3
+  SCL: 5
+offsets:
+  x_accel_offset : 0
+  y_accel_offset : 0
+  z_accel_offset : 0
+  x_gyro_offset : 0
+  y_gyro_offset : 0
+  z_gyro_offset : 0
+  enable_debug_output : False
+  caliberate_imu: False
