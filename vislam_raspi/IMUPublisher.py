@@ -1,4 +1,4 @@
-
+#sudo pip3 install adafruit-circuitpython-mpu6050
 from MPU6050 import MPU6050
 		
 from time import sleep         
