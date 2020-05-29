@@ -3,11 +3,11 @@ pin:
   SDA: 3
   SCL: 5
 offsets:
-  x_accel_offset : 0
-  y_accel_offset : 0
-  z_accel_offset : 0
-  x_gyro_offset : 0
-  y_gyro_offset : 0
-  z_gyro_offset : 0
+  x_accel_offset : 0.14
+  y_accel_offset : 0.07
+  z_accel_offset : -0.26
+  x_gyro_offset : -4.07
+  y_gyro_offset : 0.91
+  z_gyro_offset : 0.75
   enable_debug_output : False
   caliberate_imu: False

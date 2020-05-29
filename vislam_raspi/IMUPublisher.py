@@ -1,7 +1,12 @@
 #sudo pip3 install adafruit-circuitpython-mpu6050
-from MPU6050 import MPU6050
-		
-from time import sleep         
+
+#TODO: caliberation of z axis, time calc
+
+
+import board
+import busio
+import adafruit_mpu6050		
+from time       
 
 import rclpy
 from rclpy.node import Node
@@ -14,7 +19,19 @@ from geometry_msgs.msg import Quaternion
 
 
 
+ 
 
+
+
+i2c = busio.I2C(board.SCL, board.SDA)
+mpu = adafruit_mpu6050.MPU6050(i2c)
+
+while True:
+    print("Acceleration: X:%.2f, Y: %.2f, Z: %.2f m/s^2" % (mpu.acceleration))
+    print("Gyro X:%.2f, Y: %.2f, Z: %.2f degrees/s" % (mpu.gyro))
+    print("Temperature: %.2f C" % mpu.temperature)
+    print("")
+    time.sleep(1)
 class IMUPublisher(Node):
 
 
@@ -25,6 +42,7 @@ class IMUPublisher(Node):
         self.imu_twist_publisher_ = self.create_publisher(Twist, 'imu/data', 10)
         self.info_publisher_ = self.create_publisher(String, 'pi_info', 10)
 
+        self.msg = Twist()
         
         self.x_accel_offset = 0
         self.y_accel_offset = 0
@@ -32,13 +50,15 @@ class IMUPublisher(Node):
         self.x_gyro_offset = 0
         self.y_gyro_offset = 0
         self.z_gyro_offset = 0
-        self.enable_debug_output = False
-        
-        self.mpu = None
-        self.packet_size = None
 
-        self.pinSDA = self.parameters["pin"]["SDA"]
-        self.pinSCL = self.parameters["pin"]["SCL"]
+
+        i2c = busio.I2C(board.SCL, board.SDA)
+        self.mpu = adafruit_mpu6050.MPU6050(i2c)
+    
+        
+
+        # self.pinSDA = self.parameters["pin"]["SDA"]
+        # self.pinSCL = self.parameters["pin"]["SCL"]
 
         self.bool_caliberate_imu = self.parameters["offsets"]["caliberate_imu"]
 
@@ -56,7 +76,7 @@ class IMUPublisher(Node):
             self.enable_debug_output = self.parameters["offsets"]["enable_debug_output"]
             self.get_logger().info('Loaded Caliberationfrom Parameter Server')
 
-        self.mpu6050_init()
+        
 
         
         
@@ -69,67 +89,68 @@ class IMUPublisher(Node):
 
 
     def mpu6050_caliberation(self):
-        from MPU6050_cal import Calib
-        cal = Calib()
-        xaloff, yaloff, zaloff, xgyoff, ygyoff, zgyoff = cal.imu_calib()
-        self.x_accel_offset = xaloff
-        self.y_accel_offset = yaloff
-        self.z_accel_offset = zaloff
-        self.x_gyro_offset = xgyoff
-        self.y_gyro_offset = ygyoff
-        self.z_gyro_offset = zgyoff
 
-    def mpu6050_init(self):
-        i2c_bus = 1
-        device_address = 0x68
-        self.mpu = MPU6050(i2c_bus, device_address, self.x_accel_offset, self.y_accel_offset,self.z_accel_offset, self.x_gyro_offset, self.y_gyro_offset, self.z_gyro_offset,self.enable_debug_output)
- 
-        self.mpu.dmp_initialize()
-        self.mpu.set_DMP_enabled(True)
-        mpu_int_status = self.mpu.get_int_status()
-        self.get_logger().info('MPU6050 init status'+mpu_int_status)
+        meanax = 0
+        meanay = 0
+        meanaz = 0
+        meangx = 0
+        meangy = 0
+        meangz = 0
 
-        self.packet_size = self.mpu.DMP_get_FIFO_packet_size()
-        
+        no_sample = 200
+
+        for i in range(no_sample):
+            accel = self.mpu.acceleration
+            gyro = self.mpu.gyro
+            meanax += accel[0]
+            meanay += accel[1]
+            meanaz += accel[2]
+            meangx += gyro[0]
+            meangy += gyro[1]
+            meangz += gyro[2]
+
+            time.sleep(0.1)
+              
+  
+        self.x_accel_offset = meanax/no_sample
+        self.y_accel_offset = meanay/no_sample
+        self.z_accel_offset = meanaz/no_sample
+        self.x_gyro_offset = meangx/no_sample
+        self.y_gyro_offset = meangy/no_sample
+        self.z_gyro_offset = meangz/no_sample
+
+    
         
     def read_mpu6050(self):
+
+
+        accel = self.mpu.acceleration
+        gyro = self.mpu.gyro
+
+        #substract offset
+        accel[0] -= self.x_accel_offset
+        accel[1] -= self.y_accel_offset
+        accel[2] -= self.z_accel_offset
+
+        gyro[0] -= self.x_gyro_offset
+        gyro[1] -= self.y_gyro_offset
+        gyro[2] -= self.z_gyro_offset
+
+
+
+        self.msg 
+        #TODO
+
+
+        self.imu_twist_publisher_.publish(self.msg)
         
-        FIFO_buffer = [0]*64
 
-        FIFO_count_list = list()
-    
-        FIFO_count = self.mpu.get_FIFO_count()
-        mpu_int_status = self.mpu.get_int_status()
-
-        # If overflow is detected by status or fifo count we want to reset
-        if (FIFO_count == 1024) or (mpu_int_status & 0x10):
-            self.mpu.reset_FIFO()
-            self.get_logger().info('MPU6050 FIFO Buffer Overflow')
-        # Check if fifo data is ready
-        elif (mpu_int_status & 0x02):
-            # Wait until packet_size number of bytes are ready for reading, default
-            # is 42 bytes
-            while FIFO_count < self.packet_size:
-                FIFO_count = self.mpu.get_FIFO_count()
-            FIFO_buffer = self.mpu.get_FIFO_bytes(self.packet_size)
-            accel = self.mpu.DMP_get_acceleration_int16(FIFO_buffer)
-            quat = self.mpu.DMP_get_quaternion_int16(FIFO_buffer)
-            grav = self.mpu.DMP_get_gravity(quat)
-            roll_pitch_yaw = self.mpu.DMP_get_euler_roll_pitch_yaw(quat, grav)
-            if count % 100 == 0:
-                print('roll: ' + str(roll_pitch_yaw.x))
-                print('pitch: ' + str(roll_pitch_yaw.y))
-                print('yaw: ' + str(roll_pitch_yaw.z))
-            count += 1
-
+        
+        
 
 
     def timer_callback(self):
-        msg = String()
-        msg.data = 'Hello World: %d' % self.i
-        self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "%s"' % msg.data)
-        self.i += 1
+        pass
         
         
 

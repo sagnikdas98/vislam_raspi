@@ -16,5 +16,12 @@ def generate_launch_description():
             node_executable='ImagePublisher',
             node_name='image_publisher'
         ),
+        Node(
+            package='tf2_ros',
+            node_namespace='static_transform_publisher',
+            node_executable='static_transform_publisher',
+            node_name='imu_camera_transform_publisher',
+            arguments=['0.05', '0.00', '0.00','0.0','0.0','0.0','imu','camera']
+        )
         
     ])
