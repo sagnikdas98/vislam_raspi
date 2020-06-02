@@ -6,15 +6,16 @@
 import board
 import busio
 import adafruit_mpu6050		
-from time       
+from time    
+from scipy.spatial.transform import Rotation as R   
 
 import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Twist
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TransformStamped
 
 
 
@@ -26,10 +27,10 @@ class IMUPublisher(Node):
 
 
 
-        self.imu_twist_publisher_ = self.create_publisher(Twist, 'imu/data', 10)
+        self.imu_twist_publisher_ = self.create_publisher(TwistStamped, 'imu/data', 10)
         self.info_publisher_ = self.create_publisher(String, 'pi_info', 10)
 
-        self.msg = Twist()
+        self.msg = TwistStamped()
         
         self.x_accel_offset = 0
         self.y_accel_offset = 0
@@ -69,7 +70,7 @@ class IMUPublisher(Node):
         
 
     
-        timer_period = 0.5  # seconds
+        timer_period = 0.1  # seconds
         self.get_logger().info('IMU Publisher Started')
         self.timer = self.create_timer(timer_period, self.read_mpu6050)
         
@@ -123,15 +124,25 @@ class IMUPublisher(Node):
         gyro[1] -= self.y_gyro_offset
         gyro[2] -= self.z_gyro_offset
 
-
-
-        self.msg 
+        #convet degrees to radians
+        quatenion = IMUPublisher.degreeToRadians(gyro)
         #TODO
 
+
+        #assign individual x,y,z if vector assignment doesnt work
+        self.msg.Twist.linear = accel
+        self.msg.Twist.angular = gyro
+        self.msg.Header.stamp  = self.get_clock().now()
+        self.msg.Header.frame_id = 'imu'
 
         self.imu_twist_publisher_.publish(self.msg)
         
 
+    def degreeToRadians(gyro):
+        
+
+        r = R.from_euler('XYZ',gyro,degrees=True)
+        return r.as_quat()
         
         
 
