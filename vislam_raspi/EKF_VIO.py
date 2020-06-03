@@ -57,7 +57,7 @@ class EKF_VIO(ExtendedKalmanFilter):
 
         #TODO 
         #diagonal covariance matrix of noise of accel, gyro, bias_accel, bias gyro
-        self.Q = np.eye(self.process_noise_size )
+        self.Q = np.eye(self.process_noise_size)
 
         #idk what is this
         self.G = np.zeros((self.state_vector_size_imu,self.process_noise_size))
@@ -67,7 +67,7 @@ class EKF_VIO(ExtendedKalmanFilter):
 
         #state covariance matrix
         self.P = np.zeros((self.state_vector_size,self.state_vector_size))
-
+        
 
     @overrides(ExtendedKalmanFilter)
     def predict_x(self,accecelation, angular_velocity,delta_time):
@@ -80,7 +80,7 @@ class EKF_VIO(ExtendedKalmanFilter):
         delta_rotate = np.subtract(accecelation,self.bias_gyro)*delta_time
         self.orientation_quatenion *= Rotation.from_euler('XYZ',delta_rotate,degrees=True) 
 
-        #unclear
+        #unclear TODO have to update "self.rotation_world_imu"
         zeta = np.add(self.gravity_vector,np.multiply(self.rotation_world_imu,np.subtract(accecelation,self.bias_accel)))
         
         #position propatation
@@ -108,6 +108,7 @@ class EKF_VIO(ExtendedKalmanFilter):
 
 
     def filterUpdate(self):
+
         pass         
 
 
