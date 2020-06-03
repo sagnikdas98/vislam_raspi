@@ -59,10 +59,10 @@ class EKF_VIO(ExtendedKalmanFilter):
         #diagonal covariance matrix of noise of accel, gyro, bias_accel, bias gyro
         self.Q = np.eye(self.process_noise_size)
 
-        #idk what is this
+        #idk what is this; #differentiation of Fundamental Matrix wrt Process Noise vector
         self.G = np.zeros((self.state_vector_size_imu,self.process_noise_size))
 
-        #differentiation of Fundamental Matrix
+        #differentiation of Fundamental Matrix wrt State Vector
         self.F_phi = np.zeros((self.state_vector_size_imu,self.state_vector_size_imu))
 
         #state covariance matrix
