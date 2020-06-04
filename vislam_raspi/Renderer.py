@@ -56,8 +56,8 @@ class Display3D(object):
     self.dcam.SetBounds(0.0, 1.0, 0.0, 1.0, w/h)
     self.dcam.SetHandler(self.handler)
     
-    # hack to avoid small Pangolin, no idea why it's *2
-    self.dcam.Resize(pangolin.Viewport(0,0,w*2,h*2))
+  
+    self.dcam.Resize(pangolin.Viewport(0,0,w,h))
     self.dcam.Activate()
 
 
