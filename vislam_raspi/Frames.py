@@ -1,12 +1,16 @@
 import os
+
 import cv2
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
+
 from constants import RANSAC_RESIDUAL_THRES, RANSAC_MAX_TRIALS
+
 np.set_printoptions(suppress=True)
 
 from skimage.measure import ransac
+
 from Utils import add_ones, poseRt, fundamentalToRt, normalize, EssentialMatrixTransform, myjet
 
 
@@ -46,33 +50,21 @@ class Frame(object):
 				if match_first.distance < Frame.MIN_ORB_DISTANCE:
 					
 					#using dictionary to reduce search time complexity
-					if (str(match_first.queryIdx) not in matches_queryidx_dictionary) and  (str(match_first.trainIdx) not in matches_trainidx_dictionary) :
+					if (str(match_first.trainIdx) not in matches_trainidx_dictionary) :
 						matches_queryidx_dictionary[str(match_first.queryIdx)] = {'trainIdx' : match_first.trainIdx, 'distance' : match_first.distance}
 						matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
 
-					elif(str(match_first.queryIdx) in matches_queryidx_dictionary) and  (str(match_first.trainIdx) not in matches_trainidx_dictionary) :
-						if match_first.distance < matches_queryidx_dictionary[str(match_first.queryIdx)]['distance']:
-							del matches_trainidx_dictionary[matches_queryidx_dictionary[str(match_first.queryIdx)]['trainIdx']]
-							matches_queryidx_dictionary[str(match_first.queryIdx)] = {'trainIdx' : match_first.trainIdx, 'distance' : match_first.distance}
-							matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
-
-					elif(str(match_first.queryIdx) not in matches_queryidx_dictionary) and  (str(match_first.trainIdx) in matches_trainidx_dictionary) :
+					else:
 						if match_first.distance < matches_trainidx_dictionary[str(match_first.trainIdx)]['distance']:
 							del matches_queryidx_dictionary[matches_trainidx_dictionary[str(match_first.trainIdx)]['queryIdx']]
 							matches_queryidx_dictionary[str(match_first.queryIdx)] = {'trainIdx' : match_first.trainIdx, 'distance' : match_first.distance}
 							matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
 		
-					else:
-						if (match_first.distance < matches_queryidx_dictionary[str(match_first.queryIdx)]['distance']) and (match_first.distance < matches_trainidx_dictionary[str(match_first.trainIdx)]['distance']):
-							del matches_queryidx_dictionary[matches_trainidx_dictionary[str(match_first.trainIdx)]['queryIdx']]
-							del matches_trainidx_dictionary[matches_queryidx_dictionary[str(match_first.queryIdx)]['trainIdx']]
-							matches_queryidx_dictionary[str(match_first.queryIdx)] = {'trainIdx' : match_first.trainIdx, 'distance' : match_first.distance}
-							matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
-						#TODO add other conditions (if the distance is lesser than one pair but greater than the other)
-
 		for i in matches_queryidx_dictionary.keys():
 			matched_point_pair.append([int(i),matches_queryidx_dictionary[i]['trainIdx'] ])
 		
+
+		#convert matched points to numpy array
 		matched_point_pair = np.array(matched_point_pair)
 
 
