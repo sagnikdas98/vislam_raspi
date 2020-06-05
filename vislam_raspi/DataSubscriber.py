@@ -30,13 +30,7 @@ class DataSubscriber(Node):
 
 
     def image_subscribe(self, imagemsg):
-
-
-
-
-
-
-    def 
+        pass
 
 
 
