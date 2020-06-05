@@ -25,6 +25,12 @@ class Frame(object):
 	MIN_ORB_DISTANCE = 32
 
 
+	#RANSAC parameters
+	RANSAC_MIN_SAMPLES = 8
+	RANSAC_RESIDUAL_THRES = 0.02
+	RANSAC_MAX_TRIALS = 100
+
+
 
 
 	@staticmethod
@@ -49,7 +55,7 @@ class Frame(object):
 				#Within minimum ORB distance
 				if match_first.distance < Frame.MIN_ORB_DISTANCE:
 					
-					#using dictionary to reduce search time complexity
+					#using dictionary to reduce search time complexity of point pairs
 					if (str(match_first.trainIdx) not in matches_trainidx_dictionary) :
 						matches_queryidx_dictionary[str(match_first.queryIdx)] = {'trainIdx' : match_first.trainIdx, 'distance' : match_first.distance}
 						matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
@@ -61,28 +67,34 @@ class Frame(object):
 							matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
 		
 		for i in matches_queryidx_dictionary.keys():
-			matched_point_pair.append([int(i),matches_queryidx_dictionary[i]['trainIdx'] ])
+			matched_point_pair.append([frame1.keypoints[int(i)], frame1.keypoints[matches_queryidx_dictionary[i]['trainIdx']]])
 		
 
 		#convert matched points to numpy array
 		matched_point_pair = np.array(matched_point_pair)
 
 
-		#fit matrix
-		model, inliers = ransac((ret[:, 0], ret[:, 1]),
+		#fit matrix; why not affine transform
+		model_matrix, bool_inliers_mask = ransac((matched_point_pair[:, 0], matched_point_pair[:, 1]),
 														EssentialMatrixTransform,
-														min_samples=8,
-														residual_threshold=RANSAC_RESIDUAL_THRES,
-														max_trials=RANSAC_MAX_TRIALS)
-		print("Matches:  %d -> %d -> %d -> %d" % (len(f1.des), len(matches), len(inliers), sum(inliers)))
-		return idx1[inliers], idx2[inliers], fundamentalToRt(model.params)
+														min_samples=Frame.RANSAC_MIN_SAMPLES,
+														residual_threshold=Frame.RANSAC_RESIDUAL_THRES,
+														max_trials=Frame.RANSAC_MAX_TRIALS)
+
+		return idx1[inliers], idx2[inliers], fundamentalToRt(model_matrix.params)
+
+
 
 	@staticmethod
 	def extractFeatures(image):
 
-		#convert to grey scale as cv2.goodFeaturesToTrack() takes single channel image
-		image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		points = cv2.goodFeaturesToTrack(image_gray, 100, qualityLevel=0.1, minDistance=7)
+		#check if image is 3 channel (RGB)
+		if image.shape == 3:
+			#convert to grey scale as cv2.goodFeaturesToTrack() takes single channel image
+			image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+			points = cv2.goodFeaturesToTrack(image_gray, 100, qualityLevel=0.1, minDistance=7)
+		else:
+			points = cv2.goodFeaturesToTrack(image, 100, qualityLevel=0.1, minDistance=7)
 
 		#feature description (fingerprint)
 		keypoints = [cv2.KeyPoint(x=p[0][0], y=p[0][1], _size=20) for p in points]
@@ -105,6 +117,11 @@ class Frame(object):
 		#TODO
 		self.points = [None]*len(self.keypoints)
 		self.id = Frame.MAP.add_frame(self)
+
+
+	def checkForKeyframe(self):
+		#TODO
+		return self.is_keyframe
 
 	def annotate(self, img):
 		# paint annotations on the image
