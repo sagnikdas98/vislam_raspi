@@ -5,12 +5,13 @@ import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 
-from constants import RANSAC_RESIDUAL_THRES, RANSAC_MAX_TRIALS
-
-np.set_printoptions(suppress=True)
-
 from skimage.measure import ransac
+from skimage.transform import FundamentalMatrixTransform
+from skimage.transform import EssentialMatrixTransform
 
+
+from constants import RANSAC_RESIDUAL_THRES, RANSAC_MAX_TRIALS
+np.set_printoptions(suppress=True)
 from Utils import add_ones, poseRt, fundamentalToRt, normalize, EssentialMatrixTransform, myjet
 
 
@@ -23,6 +24,9 @@ class Frame(object):
 	ORB = cv2.ORB_create()
 	BF_MATCHER = cv2.BFMatcher(cv2.NORM_HAMMING)
 	MIN_ORB_DISTANCE = 32
+	
+	#KEYFRAME LIST
+	KEYFRAMES_LIST = []
 
 
 	#RANSAC parameters
@@ -34,14 +38,16 @@ class Frame(object):
 
 
 	@staticmethod
-	def matchFrames(frame1, frame2):
+	def matchFrames(src_frame, dest_frame):
+		#TODO:Add exception ransac wont work if min matches less than 8; keyframe cond
 
-		matches = Frame.BF_MATCHER.knnMatch(frame1.keypoint_descriptors, frame2.keypoint_descriptors, k=2)
+		#src_frame: query, dest_frame:train
+		matches = Frame.BF_MATCHER.knnMatch(src_frame.keypoint_descriptors, dest_frame.keypoint_descriptors, k=2)
 
 		matches_queryidx_dictionary = {}
 		matches_trainidx_dictionary = {}
 
-		#store the index of matched points (frame1_point, frame2_point)
+		#store the index of matched points (src_frame_point, dest_frame_point)
 		matched_point_pair = []
 
 
@@ -49,8 +55,6 @@ class Frame(object):
 		for match_first, match_second in matches:
 			#first match is significantly closer than the second match
 			if match_first.distance < 0.75*match_second.distance:
-				# frame1_point = frame1.keypoints[match_first.queryIdx]
-				# frame2_point = frame2.keypoints[match_first.trainIdx]
 
 				#Within minimum ORB distance
 				if match_first.distance < Frame.MIN_ORB_DISTANCE:
@@ -67,21 +71,18 @@ class Frame(object):
 							matches_trainidx_dictionary[str(match_first.trainIdx)] = {'queryIdx' : match_first.queryIdx, 'distance' : match_first.distance}
 		
 		for i in matches_queryidx_dictionary.keys():
-			matched_point_pair.append([frame1.keypoints[int(i)], frame1.keypoints[matches_queryidx_dictionary[i]['trainIdx']]])
+			matched_point_pair.append([src_frame.keypoints[int(i)], src_frame.keypoints[matches_queryidx_dictionary[i]['trainIdx']]])
 		
 
 		#convert matched points to numpy array
 		matched_point_pair = np.array(matched_point_pair)
 
+		#pass src dest 2 to rasac 
+		src_points = matched_point_pair[:, 0] #src_frame
+		dest_points = matched_point_pair[:, 1] #dest_frame
 
-		#fit matrix; why not affine transform
-		model_matrix, bool_inliers_mask = ransac((matched_point_pair[:, 0], matched_point_pair[:, 1]),
-														EssentialMatrixTransform,
-														min_samples=Frame.RANSAC_MIN_SAMPLES,
-														residual_threshold=Frame.RANSAC_RESIDUAL_THRES,
-														max_trials=Frame.RANSAC_MAX_TRIALS)
+		return  src_points, dest_points
 
-		return idx1[inliers], idx2[inliers], fundamentalToRt(model_matrix.params)
 
 
 
@@ -116,7 +117,26 @@ class Frame(object):
 		
 		#TODO
 		self.points = [None]*len(self.keypoints)
+		#TODO: Should be independent of MAP; Implement driver main function
 		self.id = Frame.MAP.add_frame(self)
+
+
+	def computeTransform(self):
+		src_frame = Frame.KEYFRAMES_LIST[-1]
+		dest_frame = self
+
+		#get matched points w.r.t previous frame
+		src_points, dest_points = Frame.matchFrames(src_frame,dest_frame)
+
+		#fit matrix
+		model_matrix, bool_inliers_mask = ransac((src_points, dest_points),
+														FundamentalMatrixTransform,
+														min_samples=Frame.RANSAC_MIN_SAMPLES,
+														residual_threshold=Frame.RANSAC_RESIDUAL_THRES,
+														max_trials=Frame.RANSAC_MAX_TRIALS)
+
+		return src_points[bool_inliers_mask], dest_points[bool_inliers_mask], fundamentalToRt(model_matrix.matrix)
+
 
 
 	def checkForKeyframe(self):

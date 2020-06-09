@@ -114,4 +114,3 @@ class EssentialMatrixTransform(object):
 
     return np.abs(dst_F_src) / np.sqrt(F_src[0] ** 2 + F_src[1] ** 2
                                        + Ft_dst[0] ** 2 + Ft_dst[1] ** 2)
-
