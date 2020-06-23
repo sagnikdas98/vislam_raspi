@@ -29,15 +29,19 @@ import numpy as np
 
 class Display3D(object):
   def __init__(self):
+
+    W = 640
+    H = 640
+
     self.state = None
     self.q = Queue()
-    self.vp = Process(target=self.viewer_thread, args=(self.q,))
+    self.vp = Process(target=self.viewer_thread, args=(self.q, W, H))
     self.vp.daemon = True
     self.vp.start()
 
-  def viewer_thread(self, q):
-    self.viewer_init(1024, 768)
-    while 1:
+  def viewer_thread(self, q, W, H):
+    self.viewer_init(W, H)
+    while True:
       self.viewer_refresh(q)
 
   def viewer_init(self, w, h):

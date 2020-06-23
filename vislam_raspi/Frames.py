@@ -25,7 +25,8 @@ class Frame(object):
 	BF_MATCHER = cv2.BFMatcher(cv2.NORM_HAMMING)
 	MIN_ORB_DISTANCE = 32
 	
-	#KEYFRAME LIST
+	#KEYFRAME LIST TODO: cotriant the list of stored frames
+	
 	KEYFRAMES_LIST = []
 
 
@@ -33,6 +34,28 @@ class Frame(object):
 	RANSAC_MIN_SAMPLES = 8
 	RANSAC_RESIDUAL_THRES = 0.02
 	RANSAC_MAX_TRIALS = 100
+
+	@staticmethod
+	def fundamentalToRt(F):
+		W = np.mat([[0,-1,0],[1,0,0],[0,0,1]],dtype=float)
+		U,d,Vt = np.linalg.svd(F)
+		if np.linalg.det(U) < 0:
+			U *= -1.0
+		if np.linalg.det(Vt) < 0:
+			Vt *= -1.0
+		R = np.dot(np.dot(U, W), Vt)
+		if np.sum(R.diagonal()) < 0:
+			R = np.dot(np.dot(U, W.T), Vt)
+		t = U[:, 2]
+
+		# TODO: Resolve ambiguities in better ways. This is wrong.
+		if t[2] < 0:
+			t *= -1
+		
+		# TODO: UGLY!
+		if os.getenv("REVERSE") is not None:
+			t *= -1
+		return np.linalg.inv(poseRt(R, t))
 
 
 
@@ -135,7 +158,12 @@ class Frame(object):
 														residual_threshold=Frame.RANSAC_RESIDUAL_THRES,
 														max_trials=Frame.RANSAC_MAX_TRIALS)
 
-		return src_points[bool_inliers_mask], dest_points[bool_inliers_mask], fundamentalToRt(model_matrix.matrix)
+		#getpose
+		delta_rotate = fundamentalToRt(model_matrix.matrix)
+		delta_rotate = Rotation.from_euler('XYZ',delta_rotate,degrees=True) 
+		self.pose_quaternion = delta_rotate*Frame.KEYFRAMES_LIST[-1].pose_quaternion
+
+		return src_points[bool_inliers_mask], dest_points[bool_inliers_mask], 
 
 
 
