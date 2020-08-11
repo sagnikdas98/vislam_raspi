@@ -4,7 +4,7 @@
 
 ![Sensor Suit](https://github.com/sagnikdas98/vislam_raspi/blob/master/images/IMG_20200605_203546.jpg)
 
-<h2>Components</h2>
-1. Raspberry Pi
-2. Monocular Camera
-3. 6Dof IMU
+<h2>Components:</h2>
+ 1. Raspberry Pi
+ 2. Monocular Camera
+ 3. 6Dof IMU
