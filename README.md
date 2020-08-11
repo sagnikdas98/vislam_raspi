@@ -9,3 +9,5 @@
  1. Raspberry Pi
  2. Monocular Camera
  3. 6Dof IMU
+<h2>Presentation Link:</h2>
+https://docs.google.com/presentation/d/19BmLgil0z_2thD825bk5EZ4fbZyOqy8e_e7bQfdLPWY/edit#slide=id.g863614e768_0_112
